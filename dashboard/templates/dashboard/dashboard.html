@@ -1,0 +1,398 @@
+{% extends 'dashboard/base.html' %}
+
+{% block content %}
+<h1 class="mb-4">Ad Performance Dashboard</h1>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title mb-3">Filters</h5>
+        <form method="get" class="row g-3">
+            <!-- Date Range Filter -->
+            <div class="col-md-3">
+                <label for="date_range" class="form-label">Date Range</label>
+                <select class="form-select" id="date_range" name="date_range">
+                    <option value="7" {% if selected_date_range == '7' %}selected{% endif %}>Last 7 days ({{ time_range_counts.7 }} records)</option>
+                    <option value="30" {% if selected_date_range == '30' %}selected{% endif %}>Last 30 days ({{ time_range_counts.30 }} records)</option>
+                    <option value="90" {% if selected_date_range == '90' %}selected{% endif %}>Last 90 days ({{ time_range_counts.90 }} records)</option>
+                    <option value="180" {% if selected_date_range == '180' %}selected{% endif %}>Last 180 days ({{ time_range_counts.180 }} records)</option>
+                    <option value="365" {% if selected_date_range == '365' %}selected{% endif %}>Last 365 days ({{ time_range_counts.365 }} records)</option>
+                    <option value="custom" {% if selected_date_range == 'custom' %}selected{% endif %}>Custom Range</option>
+                </select>
+            </div>
+            
+            <!-- Custom Date Range -->
+            <div class="col-md-6" id="customDateRange" style="display: none;">
+                <div class="row">
+                    <div class="col-md-6">
+                        <label for="custom_start" class="form-label">Start Date</label>
+                        <input type="date" class="form-control" id="custom_start" name="custom_start" value="{{ custom_start }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="custom_end" class="form-label">End Date</label>
+                        <input type="date" class="form-control" id="custom_end" name="custom_end" value="{{ custom_end }}">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Ad Type Filter -->
+            <div class="col-md-3">
+                <label for="ad_type" class="form-label">Ad Type</label>
+                <select class="form-select" id="ad_type" name="ad_type">
+                    <option value="">All Types</option>
+                    {% for type in ad_types %}
+                    <option value="{{ type }}" {% if selected_ad_type == type %}selected{% endif %}>{{ type }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <!-- Location Filter -->
+            <div class="col-md-3">
+                <label for="location" class="form-label">Location</label>
+                <select class="form-select" id="location" name="location">
+                    <option value="">All Locations</option>
+                    {% for loc in locations %}
+                    <option value="{{ loc }}" {% if selected_location == loc %}selected{% endif %}>{{ loc }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <!-- Ad Topic Filter -->
+            <div class="col-md-3">
+                <label for="ad_topic" class="form-label">Ad Topic</label>
+                <select class="form-select" id="ad_topic" name="ad_topic">
+                    <option value="">All Topics</option>
+                    {% for topic in ad_topics %}
+                    <option value="{{ topic }}" {% if selected_ad_topic == topic %}selected{% endif %}>{{ topic }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <!-- Apply Filters Button -->
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary">Apply Filters</button>
+                <a href="{% url 'dashboard:dashboard' %}" class="btn btn-secondary">Reset Filters</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Key Metrics -->
+<div class="row">
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="metric-value">{{ total_impressions }}</div>
+            <div class="metric-label">Total Impressions</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="metric-value">{{ total_clicks }}</div>
+            <div class="metric-label">Total Clicks</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="metric-value">{{ avg_ctr }}%</div>
+            <div class="metric-label">Average CTR</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card metric-card">
+            <div class="metric-value">{{ avg_conversion }}%</div>
+            <div class="metric-label">Average Conversion Rate</div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts -->
+<div class="row mt-4">
+    <!-- Daily Trends -->
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Daily Performance Trends</h5>
+                <div style="height: 400px;">
+                    <canvas id="dailyTrendsChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Ad Type Performance -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Ad Type Performance</h5>
+                <div style="height: 300px;">
+                    <canvas id="adTypeChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Location Performance -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Location Performance</h5>
+                <div style="height: 300px;">
+                    <canvas id="locationChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Topic Performance -->
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Ad Topic Performance</h5>
+                <div style="height: 400px;">
+                    <canvas id="topicChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Parse JSON data
+    const dailyTrends = JSON.parse('{{ daily_trends|safe }}');
+    const adTypePerformance = JSON.parse('{{ ad_type_performance|safe }}');
+    const locationPerformance = JSON.parse('{{ location_performance|safe }}');
+    const topicPerformance = JSON.parse('{{ topic_performance|safe }}');
+
+    // Daily Trends Chart
+    new Chart(document.getElementById('dailyTrendsChart'), {
+        type: 'line',
+        data: {
+            labels: dailyTrends.map(d => new Date(d.date).toLocaleDateString()),
+            datasets: [
+                {
+                    label: 'Impressions',
+                    data: dailyTrends.map(d => d.total_impressions),
+                    borderColor: '#17a2b8',
+                    backgroundColor: 'rgba(23, 162, 184, 0.1)',
+                    fill: true,
+                    tension: 0.1,
+                    yAxisID: 'y'
+                },
+                {
+                    label: 'Clicks',
+                    data: dailyTrends.map(d => d.total_clicks),
+                    borderColor: '#007bff',
+                    backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                    fill: true,
+                    tension: 0.1,
+                    yAxisID: 'y'
+                },
+                {
+                    label: 'CTR (%)',
+                    data: dailyTrends.map(d => (d.avg_ctr * 100).toFixed(2)),
+                    borderColor: '#28a745',
+                    backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                    fill: true,
+                    tension: 0.1,
+                    yAxisID: 'y1'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                },
+                title: {
+                    display: true,
+                    text: 'Daily Performance Metrics'
+                }
+            },
+            scales: {
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    title: {
+                        display: true,
+                        text: 'Count'
+                    }
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    title: {
+                        display: true,
+                        text: 'CTR (%)'
+                    },
+                    grid: {
+                        drawOnChartArea: false
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Date'
+                    }
+                }
+            }
+        }
+    });
+
+    // Ad Type Performance Chart
+    new Chart(document.getElementById('adTypeChart'), {
+        type: 'bar',
+        data: {
+            labels: adTypePerformance.map(d => d.ad_type),
+            datasets: [
+                {
+                    label: 'Impressions',
+                    data: adTypePerformance.map(d => d.total_impressions),
+                    backgroundColor: '#17a2b8',
+                    order: 1
+                },
+                {
+                    label: 'Clicks',
+                    data: adTypePerformance.map(d => d.total_clicks),
+                    backgroundColor: '#007bff',
+                    order: 2
+                },
+         
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Count / Rate'
+                    }
+                }
+            }
+        }
+    });
+
+    // Location Performance Chart
+    new Chart(document.getElementById('locationChart'), {
+        type: 'bar',
+        data: {
+            labels: locationPerformance.map(d => d.location),
+            datasets: [
+                {
+                    label: 'Impressions',
+                    data: locationPerformance.map(d => d.total_impressions),
+                    backgroundColor: '#17a2b8'
+                },
+                {
+                    label: 'Clicks',
+                    data: locationPerformance.map(d => d.total_clicks),
+                    backgroundColor: '#007bff'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Count'
+                    }
+                }
+            }
+        }
+    });
+
+    // Topic Performance Chart
+    new Chart(document.getElementById('topicChart'), {
+        type: 'bar',
+        data: {
+            labels: topicPerformance.map(d => d.ad_topic),
+            datasets: [
+                {
+                    label: 'Impressions',
+                    data: topicPerformance.map(d => d.total_impressions),
+                    backgroundColor: '#17a2b8'
+                },
+                {
+                    label: 'Clicks',
+                    data: topicPerformance.map(d => d.total_clicks),
+                    backgroundColor: '#007bff'
+                },
+
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y',
+            plugins: {
+                legend: {
+                    position: 'top',
+                }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Count / Rate'
+                    }
+                }
+            }
+        }
+    });
+
+    // Show/hide custom date range based on selection
+    document.getElementById('date_range').addEventListener('change', function() {
+        const customDateRange = document.getElementById('customDateRange');
+        if (this.value === 'custom') {
+            customDateRange.style.display = 'block';
+        } else {
+            customDateRange.style.display = 'none';
+            // If not custom range, submit form immediately
+            document.querySelector('form').submit();
+        }
+    });
+
+    // Only submit form for custom range when both dates are selected
+    document.querySelectorAll('#custom_start, #custom_end').forEach(input => {
+        input.addEventListener('change', () => {
+            const start = document.getElementById('custom_start').value;
+            const end = document.getElementById('custom_end').value;
+            if (start && end) {
+                document.querySelector('form').submit();
+            }
+        });
+    });
+
+    // Initialize custom date range visibility
+    if (document.getElementById('date_range').value === 'custom') {
+        document.getElementById('customDateRange').style.display = 'block';
+    }
+</script>
+{% endblock %} 
