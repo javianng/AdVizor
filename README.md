@@ -78,8 +78,20 @@ AdVizor is a powerful Django-based web application that provides real-time analy
 
 ## Data Import
 
-1. **Prepare your CSV data**
-   - Ensure your CSV file contains the required columns:
+1. **Using the Mendeley Online Advertisement Click-Through Rates Dataset**
+   - This project supports using the dataset from:
+     > Tawade, Jagadish; Kulkarni, Nitiraj (2024), "Dataset: Online Advertisement Click-Through Rates", Mendeley Data, V1, doi: 10.17632/wrvjmdtjd9.1
+   - Download the dataset from [Mendeley Data](https://data.mendeley.com/datasets/wrvjmdtjd9/1)
+     - Tawade, Jagadish; Kulkarni, Nitiraj (2024), “Dataset: Online Advertisement Click-Through Rates”, Mendeley Data, V1, doi: 10.17632/wrvjmdtjd9.1
+   - This dataset includes comprehensive advertising metrics:
+     - User demographics (age, gender, income, location)
+     - Ad characteristics (types, topics, placements)
+     - User behavior metrics (clicks, click times, conversion rates)
+     - Contextual factors (day of week, device type)
+     - Click-through rates (CTR)
+
+2. **Prepare your CSV data**
+   - The dataset can be directly used with AdVizor after ensuring the following columns are mapped:
      - click_time
      - ad_type
      - location
@@ -88,11 +100,12 @@ AdVizor is a powerful Django-based web application that provides real-time analy
      - impressions
      - ctr
      - conversion_rate
+   - Additional demographic and device data from the dataset can be used by customizing the data model
 
-2. **Import data through the admin interface**
+3. **Import data through the admin interface**
    - Log in to the admin interface
    - Navigate to the Advertisement section
-   - Use the "Import" button to upload your CSV file
+   - Use the "Import" button to upload your processed CSV file
 
 ## Using the Dashboard
 
